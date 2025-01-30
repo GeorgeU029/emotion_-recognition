@@ -9,7 +9,7 @@ import random
 # Data directory and classes
 data_directory = "Training/"
 classes = ["0", "1", "2", "3", "4", "5", "6"]
-img_size = 244
+img_size = 224
 
 # Load training data
 training_data = []
