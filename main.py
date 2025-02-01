@@ -1,72 +1,89 @@
+import os
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers
-import cv2
-import os
-import numpy as np
-import random
+from tensorflow.keras import layers, models
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-# Data directory and classes
-data_directory = "Training/"
-classes = ["0", "1", "2", "3", "4", "5", "6"]
+#Enviromental!
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"    # Show all logs
+os.environ["TF_CPP_MAX_VLOG_LEVEL"] = "3"     # Verbose logging
+
+# Optional thread settings (if needed)
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
+os.environ["TF_FORCE_UNIFIED_MEMORY"] = "1"
+os.environ["TF_DISABLE_MLIR"] = "1"
+os.environ["OMP_NUM_THREADS"] = "4"
+os.environ["TF_NUM_INTEROP_THREADS"] = "4"
+os.environ["TF_NUM_INTRAOP_THREADS"] = "4"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+tf.config.threading.set_inter_op_parallelism_threads(4)
+tf.config.threading.set_intra_op_parallelism_threads(4)
+
+# Check if GPU is available using the legacy API.
+print("Is GPU available:", tf.test.is_gpu_available())
+
+
+data_directory = "Training/"  
 img_size = 224
+batch_size = 128
+epochs = 25
 
-# Load training data
-training_data = []
-def create_training_data():
-    global training_data  # Ensure this modifies the main list
-    for category in classes:
-        path = os.path.join(data_directory, category)
-        if not os.path.exists(path):
-            print(f"Directory {path} not found!")
-            continue
-        print(f"Processing category: {category}")  # Check if it's processing categories
+# ---------------------- Data Pipeline using ImageDataGenerator ----------------------
+# Create a data generator with a validation split.
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    validation_split=0.1  # 10% of data used for validation
+)
 
-        class_num = classes.index(category)
-        for img in os.listdir(path):
-            try:
-                img_path = os.path.join(path, img)
-                img_array = cv2.imread(img_path)
-                if img_array is None:
-                    print(f"Failed to load image: {img_path}")  # Check if images fail to load
-                    continue
+# Training generator: uses the "training" subset.
+train_generator = train_datagen.flow_from_directory(
+    data_directory,
+    target_size=(img_size, img_size),
+    batch_size=batch_size,
+    class_mode='sparse',  # Use sparse labels for integer class indices
+    subset='training',
+    shuffle=True
+)
 
-                new_array = cv2.resize(img_array, (img_size, img_size))
-                training_data.append([new_array, class_num])
-            except Exception as e:
-                print(f"Error processing {img}: {e}")  # Capture any other errors
+# Validation generator: uses the "validation" subset.
+validation_generator = train_datagen.flow_from_directory(
+    data_directory,
+    target_size=(img_size, img_size),
+    batch_size=batch_size,
+    class_mode='sparse',
+    subset='validation',
+    shuffle=True
+)
 
-    print(f"Total training samples loaded: {len(training_data)}")  # Final confirmation
+
+# Load the pre-trained MobileNetV2 base (without its top classifier)
+base_model = tf.keras.applications.MobileNetV2(
+    include_top=False,
+    input_shape=(img_size, img_size, 3),
+    pooling='avg',
+    weights='imagenet'
+)
+base_model.trainable = False  # Freeze the base model
+
+# Add custom layers for our 7-class problem.
+x = layers.Dense(128, activation='relu')(base_model.output)
+x = layers.Dense(64, activation='relu')(x)
+final_output = layers.Dense(len(train_generator.class_indices), activation='softmax')(x)
+
+# Define the complete model.
+model = models.Model(inputs=base_model.input, outputs=final_output)
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model.summary()
 
 
+history = model.fit(
+    train_generator,
+    steps_per_epoch=train_generator.samples // batch_size,
+    validation_data=validation_generator,
+    validation_steps=validation_generator.samples // batch_size,
+    epochs=epochs
+)
 
-create_training_data()
-random.shuffle(training_data)
 
-# Prepare features and labels
-x, y = [], []
-for features, label in training_data:
-    x.append(features)
-    y.append(label)
-
-x = np.array(x).reshape(-1, img_size, img_size, 3) / 255.0  # Normalize
-y = np.array(y)
-
-# Load pre-trained MobileNetV2 model
-base_model = tf.keras.applications.MobileNetV2(include_top=False, input_shape=(img_size, img_size, 3), pooling='avg')
-
-# Transfer learning
-base_input = base_model.input
-base_output = base_model.output
-
-final_output = layers.Dense(128, activation='relu')(base_output)
-final_output = layers.Dense(64, activation='relu')(final_output)
-final_output = layers.Dense(7, activation='softmax')(final_output)
-
-# Create new model
-new_model = keras.Model(inputs=base_input, outputs=final_output)
-new_model.compile(loss="sparse_categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
-print(f"Total training samples loaded: {len(training_data)}")
-
-# Train the model
-new_model.fit(x, y, epochs=15)
+model.save("my_model.keras")
+print("Model training complete and saved as 'my_model.keras'")
