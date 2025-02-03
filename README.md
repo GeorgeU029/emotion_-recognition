@@ -15,7 +15,9 @@ This project uses **TensorFlow 1.5**. I trained the model on an AMD GPU using **
 ## Installation & Setup
 
 git clone https://github.com/GeorgeU029/emotion_-recognition.git
+
 cd emotion_-recognition
+
 pip install -r requirements.txt
 
 ## Training the Model
