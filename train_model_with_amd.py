@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import random
 
-# ===================== Environment Settings =====================
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"    # Show all logs
 os.environ["TF_CPP_MAX_VLOG_LEVEL"] = "3"     # Verbose logging
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
@@ -22,9 +22,9 @@ tf.config.threading.set_intra_op_parallelism_threads(8)
 # Check if GPU is available using the legacy API.
 print("Is GPU available:", tf.test.is_gpu_available())
 
-# ===================== Custom Data Generator =====================
+
 data_directory = "Training/"  
-# Assuming folder names for classes are "0", "1", "2", "3", "4", "5", "6"
+
 classes = ["0", "1", "2", "3", "4", "5", "6"]
 img_size = 224  # Adjust if needed
 batch_size = 64
@@ -106,7 +106,7 @@ new_model = keras.Model(inputs=base_input, outputs=final_output)
 new_model.compile(loss="sparse_categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
 new_model.summary()
 
-# ===================== Model Training =====================
+
 # Train the model using the custom data generator.
 initial_epochs = 25
 new_model.fit_generator(
@@ -115,9 +115,9 @@ new_model.fit_generator(
     epochs=initial_epochs
 )
 
-# Optionally, you can fine-tune the base model here by unfreezing some layers and training with a lower learning rate.
 
-# ===================== Save the Model =====================
+
+# Save the Model
 new_model.save("my_model.keras", save_format="keras")
 new_model.save("my_model.h5", save_format="h5")
-print("✅ Model training complete and saved as 'my_model.keras' and 'my_model.h5'")
+print("Model training complete and saved as 'my_model.keras' and 'my_model.h5'")
