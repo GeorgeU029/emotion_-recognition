@@ -20,19 +20,19 @@ pip install -r requirements.txt
 
 ## Training the Model
 
-# Run the following script to build and train the model.
-# The model is still being improved, but it is functional.
+Run the following script to build and train the model.
+
 python train_model_with_amd.py
 
 ## Testing the Model
 
-# After training, test the model using these scripts:
+After training, test the model using these scripts:
 python testing.py         # For images
 python testing_video.py   # For videos
 
 ## Output
 
-# The results will be saved as:
+The results will be saved as:
 output.png
 
 
